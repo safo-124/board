@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 
-import { query } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 
 export const get = query({
     args: {
@@ -19,7 +19,27 @@ export const get = query({
         .order("desc")
         .collect()
 
-        return boards
+        const boardsWithFavouriteRelation = boards.map((board) => {
+            return ctx.db
+              .query("userFavourites")
+              .withIndex("by_user_board", (q) => 
+                q
+                  .eq("userId", identity.subject)
+                  .eq("boardId", board._id)
+              )
+              .unique()
+              .then((favourite) => {
+                return {
+                  ...board,
+                  isFavorite: !!favourite,
+                };
+              });
+          });
+      
+          const boardsWithFavouriteBoolean = Promise.all(boardsWithFavouriteRelation);
+      
+          return boardsWithFavouriteBoolean;
     }
 })
+
 
